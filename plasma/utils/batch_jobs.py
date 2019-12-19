@@ -124,7 +124,7 @@ def create_slurm_script(
         idx,
         executable_name,
         use_mpi,
-        env_name="ppltest",
+        env_name="pplori",
         env_type="anaconda3"):
     filename = "run_{}_nodes.cmd".format(num_nodes)
     filepath = subdir+filename
@@ -142,6 +142,7 @@ def create_slurm_script(
         f.write((
             'module load hdf5/gcc/openmpi-3.1.4/1.10.5 \n'))
         # f.write('rm -f /tigress/{}/model_checkpoints/*.h5\n'.format(user))
+        f.write('cd {}\n'.format(subdir))
         f.write('srun python {}\n'.format(executable_name))
         f.write('echo "done."')
 

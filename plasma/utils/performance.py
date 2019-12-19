@@ -5,12 +5,12 @@ from scipy import stats
 import numpy as np
 from pprint import pprint
 import os
-import matplotlib
-matplotlib.use('Agg')  # for machines that don't have a display
+#import matplotlib
+#matplotlib.use('Agg')  # for machines that don't have a display
 import matplotlib.pyplot as plt  # noqa
-from matplotlib import rc  # noqa
-rc('font', **{'family': 'serif', 'sans-serif': ['Times']})
-rc('text', usetex=True)
+#from matplotlib import rc  # noqa
+#rc('font', **{'family': 'serif', 'sans-serif': ['Times']})
+#rc('text', usetex=True)
 
 
 class PerformanceAnalyzer():
@@ -709,8 +709,8 @@ class PerformanceAnalyzer():
                     plt.legend(loc=(1.0, 0.6))
                     plt.ylim([1e-7, 1.1e0])
                     plt.grid()
-                    plt.savefig('fig_{}.png'.format(shot.number),
-                                bbox_inches='tight')
+                    plt.savefig('fig_{}.png'.format(shot.number))#,
+                     #        bbox_inches='tight')
                 plotted += 1
 
     def plot_shot(self, shot, save_fig=True, normalize=True, truth=None,
@@ -808,8 +808,8 @@ class PerformanceAnalyzer():
         #         plt.savefig("{}.png".format(num),dpi=200,bbox_inches="tight")
                 if save_fig:
                     plt.savefig('sig_fig_{}{}.png'.format(shot.number,
-                                                          extra_filename),
-                                bbox_inches='tight')
+                                                          extra_filename)),
+                        #        bbox_inches='tight')
                     np.savez('sig_{}{}.npz'.format(shot.number,
                                                    extra_filename),
                              shot=shot, T_min_warn=self.T_min_warn,
@@ -919,7 +919,7 @@ class PerformanceAnalyzer():
         title_str = 'metrics{}'.format(plot_string.replace('_', ' '))
         plt.title(title_str)
         if save_figure:
-            plt.savefig(title_str + '.png', bbox_inches='tight')
+            plt.savefig(title_str + '.png')#, bbox_inches='tight')
         plt.close('all')
         plt.plot(fp_range, 1-missed_range, '-b', linestyle=linestyle)
         ax = plt.gca()
@@ -939,7 +939,7 @@ class PerformanceAnalyzer():
         plt.xlim([0, 1])
         plt.ylim([0, 1])
         if save_figure:
-            plt.savefig(title_str + '_roc.png', bbox_inches='tight', dpi=200)
+            plt.savefig(title_str + '_roc.png')#, bbox_inches='tight', dpi=200)
         print('ROC area ({}) is {}'.format(
             plot_string, self.roc_from_missed_fp(missed_range, fp_range)))
         return P_thresh_range, missed_range, fp_range

@@ -374,6 +374,18 @@ class Shot(object):
             curr_idx += sig.num_channels
         return t_array, signal_array
 
+    def get_data_arrays_contaminate(self,use_signals,dtype='float32',contaminate_description=None,cvalue=0.0):
+        t_array = self.ttd
+        signal_array = np.zeros((len(t_array),sum([sig.num_channels for sig in use_signals])),dtype=dtype)
+        curr_idx = 0
+        for sig in use_signals:
+            signal_array[:,curr_idx:curr_idx+sig.num_channels] = self.signals_dict[sig]
+            if sig.description==contaminate_description:
+              print('Contaminating ',sig.description,'..Artificially.............................')
+              signal_array[:,curr_idx:curr_idx+sig.num_channels] = cvalue
+
+            curr_idx += sig.num_channels
+        return t_array,signal_array
     def get_individual_signal_arrays(self):
         # guarantee ordering
         return [self.signals_dict[sig] for sig in self.signals]
@@ -385,6 +397,7 @@ class Shot(object):
         time_arrays, signal_arrays, t_min, t_max, valid = (
             self.get_signals_and_times_from_file(conf))
         self.valid = valid
+        print('shot NUMBER',self.number,'valid==' ,valid,'......................')
         # cut and resample
         if self.valid:
             self.cut_and_resample_signals(
@@ -403,7 +416,7 @@ class Shot(object):
             garbage=True
         non_valid_signals=0
         signal_prepath = conf['paths']['signal_prepath']
-        if self.number in [127613,129423,125726,126662]:
+        if self.number in [127613,129423,125726,126662,165910]:
              return None, None, None, None, False
         for (i, signal) in enumerate(self.signals):
             if isinstance(signal_prepath,list):
@@ -491,12 +504,13 @@ class Shot(object):
             conf):
         dt = conf['data']['dt']
         signals_dict = dict()
-
+        print('resampling..',self.number)
         # resample signals
         assert((len(signal_arrays) == len(time_arrays)
                 == len(self.signals)) and len(signal_arrays) > 0)
         tr = 0
         for (i, signal) in enumerate(self.signals):
+            print(signal)
             tr, sigr = cut_and_resample_signal(
                 time_arrays[i], signal_arrays[i], t_min, t_max, dt,
                 conf['data']['floatx'])

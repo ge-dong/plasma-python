@@ -274,6 +274,14 @@ q95 = Signal(
     "q95 safety factor", ['ppf/efit/q95', "EFIT01/RESULTS.AEQDSK.Q95"],
     [jet, d3d], causal_shifts=[15, 10], normalize=False,
     data_avail_tolerances=[0.03, 0.02])
+q95_EFITRT1 = Signal(
+    "q95 safety factor in real time", ['ppf/efit/q95', "EFITRT1/RESULTS.AEQDSK.Q95"],
+    [jet, d3d], causal_shifts=[15, 0], normalize=False,
+    data_avail_tolerances=[0.03, 0.029])
+vd = Signal(
+    "vertical displacement change", [ "d3d/vpsdfz"],
+    [d3d], causal_shifts=[ 0], normalize=False,
+    data_avail_tolerances=[ 0.029])
 q95t = Signal(
     "q95 safety factor tol", ['ppf/efit/q95', "EFIT01/RESULTS.AEQDSK.Q95"],
     [jet, d3d], causal_shifts=[15, 10], normalize=False,
@@ -297,6 +305,7 @@ lm = Signal("Locked mode amplitude", ['jpf/da/c2-loca', 'd3d/dusbradial'],
             [jet, d3d])
 lmt = Signal("Locked mode amplitude tol", ['jpf/da/c2-loca', 'd3d/dusbradial'],
             [jet, d3d],data_avail_tolerances=[0.029, 0.029])
+n1_rms = Signal("n1 finite frequency signals",['mhd/mirnov.n1rms'],[d3d],data_avail_tolerances=[0.029],causal_shifts=20)
 dens = Signal("Plasma density", ['jpf/df/g1r-lid:003', 'd3d/dssdenest'],
               [jet, d3d], is_strictly_positive=True)
 denst = Signal("Plasma density tol", ['jpf/df/g1r-lid:003', 'd3d/dssdenest'],
@@ -374,6 +383,28 @@ all_signals_gar18 = {
     'etemp_profilet': etemp_profilet, 'edens_profilet': edens_profilet,
 }
 
+all_signals_real_time={
+    'q95_EFITRT1': q95_EFITRT1, 'li': li, 'ip': ip, 'betan': betan, 'energy': energy, 'lm': lm,
+    'dens': dens, 'pradcore': pradcore,
+    'pradedge': pradedge, 'pradtot': pradtot, 'pin': pin,
+    'torquein': torquein,
+    'energydt': energydt, 'ipdirect': ipdirect, 'iptarget': iptarget,
+    'iperr': iperr, 
+    # 'tmamp1':tmamp1, 'tmamp2':tmamp2, 'tmfreq1':tmfreq1, 'tmfreq2':tmfreq2,
+    # 'pechin':pechin,
+    # 'rho_profile_spatial':rho_profile_spatial, 'etemp':etemp,
+    'etemp_profile': etemp_profile, 'edens_profile': edens_profile,
+}
+all_signals_real_time_0D={
+    'q95_EFITRT1': q95_EFITRT1, 'li': li, 'ip': ip, 'betan': betan, 'energy': energy, 'lm': lm,
+    'dens': dens, 'pradcore': pradcore,
+    'pradedge': pradedge, 'pradtot': pradtot, 'pin': pin,
+    'torquein': torquein, 'vd': vd,
+    'energydt': energydt, 'ipdirect': ipdirect, 'iptarget': iptarget,
+    # 'tmamp1':tmamp1, 'tmamp2':tmamp2, 'tmfreq1':tmfreq1, 'tmfreq2':tmfreq2,
+    # 'pechin':pechin,
+    # 'rho_profile_spatial':rho_profile_spatial, 'etemp':etemp,
+}
 
 all_signals = {
     'q95': q95, 'li': li, 'ip': ip, 'betan': betan, 'energy': energy, 'lm': lm,
@@ -391,6 +422,16 @@ all_signals = {
     # 'neut_profile':neut_profile, 'q_profile':q_profile,
     # 'bootstrap_current_profile':bootstrap_current_profile,
     # 'q_psi_profile':q_psi_profile}
+}
+
+all_signals_n1rms = {
+    'n1_rms':n1_rms,'q95': q95, 'li': li, 'ip': ip, 'betan': betan, 'energy': energy, 'lm': lm,
+    'dens': dens, 'pradcore': pradcore,
+    'pradedge': pradedge, 'pradtot': pradtot, 'pin': pin,
+    'torquein': torquein,
+    'energydt': energydt, 'ipdirect': ipdirect, 'iptarget': iptarget,
+    'iperr': iperr,
+    'etemp_profile': etemp_profile, 'edens_profile': edens_profile,
 }
 
 
@@ -424,6 +465,10 @@ fully_defined_signals_1D = {
 }
 d3d_signals = {
     sig_name: sig for (sig_name, sig) in all_signals_restricted.items() if (
+        sig.is_defined_on_machine(d3d))
+}
+d3d_signals_n1rms = {
+    sig_name: sig for (sig_name, sig) in all_signals_n1rms.items() if (
         sig.is_defined_on_machine(d3d))
 }
 d3d_signals_gar18 = {

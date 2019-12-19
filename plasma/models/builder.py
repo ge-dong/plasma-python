@@ -10,7 +10,7 @@ from keras.layers.core import (
     Reshape, Flatten, Permute,  # RepeatVector
     )
 from keras.layers import LSTM, SimpleRNN, BatchNormalization
-from keras.layers.convolutional import Convolution1D
+from keras.layers.convolutional import Convolution1D, Cropping1D
 from keras.layers.pooling import MaxPooling1D
 # from keras.utils.data_utils import get_file
 from keras.layers.wrappers import TimeDistributed
@@ -136,8 +136,6 @@ class ModelBuilder(object):
             exit(1)
 
         batch_input_shape = (batch_size, length, num_signals)
-        # batch_shape_non_temporal = (batch_size, num_signals)
-
         indices_0d, indices_1d, num_0D, num_1D = self.get_0D_1D_indices()
 
         def slicer(x, indices):
@@ -278,6 +276,272 @@ class ModelBuilder(object):
             x_in = TimeDistributed(pre_rnn_model)(x_input)
         else:
             x_in=x_input
+###################TCN model##################################
+        if 'keras_tcn' in model_conf.keys() and model_conf['keras_tcn']==True:
+          print('Building TCN model....')
+          tcn_layers=model_conf['tcn_layers']
+          tcn_dropout=model_conf['tcn_dropout']
+          nb_filters=model_conf['tcn_hidden']
+          kernel_size=model_conf['kernel_size_temporal']
+          nb_stacks=model_conf['tcn_nbstacks']
+          use_skip_connections=model_conf['tcn_skip_connect']
+          activation=model_conf['tcn_activation']
+          use_batch_norm=model_conf['tcn_batch_norm']
+          for _ in range(model_conf['tcn_pack_layers']):
+            x_in=TCN(
+               use_batch_norm=use_batch_norm,activation=activation,
+               use_skip_connections=use_skip_connections,
+               nb_stacks=nb_stacks,kernel_size=kernel_size,
+               nb_filters=nb_filters,num_layers=tcn_layers,
+               dropout_rate=tcn_dropout)(x_in)
+            x_in = Dropout(dropout_prob) (x_in)
+        else: 
+##################END #TCN model##################################
+          for _ in range(model_conf['rnn_layers']):
+            x_in = rnn_model(
+                rnn_size, return_sequences=return_sequences,
+                # batch_input_shape=batch_input_shape,
+                stateful=stateful, kernel_regularizer=l2(regularization),
+                recurrent_regularizer=l2(regularization),
+                bias_regularizer=l2(regularization), dropout=dropout_prob,
+                recurrent_dropout=dropout_prob)(x_in)
+            x_in = Dropout(dropout_prob)(x_in)
+        if return_sequences:
+            # x_out = TimeDistributed(Dense(100,activation='tanh')) (x_in)
+            x_out = TimeDistributed(
+                Dense(1, activation=output_activation))(x_in)
+        else:
+            x_out = Dense(1, activation=output_activation)(x_in)
+        model = Model(inputs=x_input, outputs=x_out)
+        # bug with tensorflow/Keras
+        # TODO(KGF): what is this bug? this is the only direct "tensorflow"
+        # import outside of mpi_runner.py and runner.py
+        if (conf['model']['backend'] == 'tf'
+                or conf['model']['backend'] == 'tensorflow'):
+            first_time = "tensorflow" not in sys.modules
+            import tensorflow as tf
+            if first_time:
+                K.get_session().run(tf.global_variables_initializer())
+
+        model.reset_states()
+        return model
+
+###########################The following function builds model to go with the keras2c and PCS#############
+##########################################################################################################
+    def build_model_PCS(self, predict, custom_batch_size=None):
+        conf = self.conf
+        model_conf = conf['model']
+        rnn_size = model_conf['rnn_size']
+        rnn_type = model_conf['rnn_type']
+        regularization = model_conf['regularization']
+        dense_regularization = model_conf['dense_regularization']
+        use_batch_norm = False
+        if 'use_batch_norm' in model_conf:
+            use_batch_norm = model_conf['use_batch_norm']
+
+        dropout_prob = model_conf['dropout_prob']
+        length = model_conf['length']
+        pred_length = model_conf['pred_length']
+        # skip = model_conf['skip']
+        stateful = model_conf['stateful']
+        return_sequences = model_conf['return_sequences']
+        # model_conf['output_activation']
+        output_activation = conf['data']['target'].activation
+        use_signals = conf['paths']['use_signals']
+        num_signals = sum([sig.num_channels for sig in use_signals])
+        num_conv_filters = model_conf['num_conv_filters']
+        # num_conv_layers = model_conf['num_conv_layers']
+        size_conv_filters = model_conf['size_conv_filters']
+        pool_size = model_conf['pool_size']
+        dense_size = model_conf['dense_size']
+
+        batch_size = self.conf['training']['batch_size']
+        if predict:
+            batch_size = self.conf['model']['pred_batch_size']
+            # so we can predict with one time point at a time!
+            if return_sequences:
+                length = pred_length
+            else:
+                length = 1
+
+        if custom_batch_size is not None:
+            batch_size = custom_batch_size
+
+        if rnn_type == 'LSTM':
+            rnn_model = LSTM
+        elif rnn_type == 'SimpleRNN':
+            rnn_model = SimpleRNN
+        else:
+            print('Unkown Model Type, exiting.')
+            exit(1)
+
+        batch_input_shape = (batch_size, length, num_signals)
+        # batch_shape_non_temporal = (batch_size, num_signals)
+
+        indices_0d, indices_1d, num_0D, num_1D = self.get_0D_1D_indices()
+
+        def slicer(x, indices):
+            return x[:, indices]
+
+        def slicer_output_shape(input_shape, indices):
+            shape_curr = list(input_shape)
+            assert len(shape_curr) == 2  # only valid for 3D tensors
+            shape_curr[-1] = len(indices)
+            return tuple(shape_curr)
+       ###################################The PCS_single_time_step builds model with no TimeDistributed layer######
+        if 'PCS_single_time_step' in model_conf.keys() and model_conf['PCS_single_time_step'] ==True:
+            stf=True #Single_time_step flag
+        else: 
+            stf=False
+
+      #  if stf:
+      #          pre_rnn_input_0=Input(batch_shape=(1,1,num_signals))
+      #          pre_rnn_input=Reshape((num_signals,1))(pre_rnn_input_0)
+      #  else:
+               # pre_rnn_input = Input(shape=(num_signals,))
+        pre_rnn_input_0 = Input(batch_shape=batch_input_shape)
+        pre_rnn_input=pre_rnn_input_0
+                
+
+        if num_1D > 0:
+            pre_rnn_input= Permute((2,1))(pre_rnn_input)
+            pre_rnn_1D = Cropping1D((len(indices_0d),0))(pre_rnn_input)
+            pre_rnn_0D = Cropping1D((0,len(indices_1d)))(pre_rnn_input)
+            
+          #  print('Diagnosing shapes pre_rnn_input:', pre_rnn_input.shape)
+          #  print('Diagnosing shapes pre_rnn_1D:', pre_rnn_1D.shape)
+          #  print('Diagnosing shapes pre_rnn_0D:', pre_rnn_0D.shape)
+           # print('length indices_1d:',len(indices_1d))
+            pre_rnn_1D = Permute((2,1))(pre_rnn_1D)
+            pre_rnn_0D = Permute((2,1))(pre_rnn_0D)
+            
+            pre_rnn_1D = Reshape((length,num_1D, len(indices_1d)//num_1D))(pre_rnn_1D)
+            pre_rnn_1D = Permute((1, 3, 2))(pre_rnn_1D)
+            if stf: 
+                  pre_rnn_1D = Reshape((len(indices_1d)//num_1D,num_1D)) (pre_rnn_1D)
+            
+            if 'simple_conv' in model_conf.keys() and model_conf['simple_conv']==True:
+              for i in range(model_conf['num_conv_layers']):
+                if stf:
+                  pre_rnn_1D = Convolution1D(num_conv_filters,size_conv_filters,padding='valid',activation='relu') (pre_rnn_1D)
+                  pre_rnn_1D = MaxPooling1D(pool_size) (pre_rnn_1D) 
+                else: 
+                  pre_rnn_1D = TimeDistributed(Convolution1D(num_conv_filters,size_conv_filters,padding='valid',activation='relu'))(pre_rnn_1D)
+                  pre_rnn_1D = TimeDistributed(MaxPooling1D(pool_size)) (pre_rnn_1D) 
+            else:
+              for i in range(model_conf['num_conv_layers']):
+                div_fac = 2**i
+                if stf:
+                  pre_rnn_1D = Convolution1D(
+                    num_conv_filters//div_fac, size_conv_filters,
+                    padding='valid')(pre_rnn_1D)
+                  if use_batch_norm:
+                    pre_rnn_1D = BatchNormalization()(pre_rnn_1D)
+                  pre_rnn_1D = Activation('relu')(pre_rnn_1D)
+                  pre_rnn_1D = Convolution1D(
+                    num_conv_filters//div_fac, 1, padding='valid')(pre_rnn_1D)
+                  if use_batch_norm:
+                    pre_rnn_1D = BatchNormalization()(pre_rnn_1D)
+                  pre_rnn_1D = Activation('relu')(pre_rnn_1D)
+                  pre_rnn_1D = MaxPooling1D(pool_size)(pre_rnn_1D)
+                else:
+                  pre_rnn_1D = TimeDistributed(Convolution1D(
+                    num_conv_filters//div_fac, size_conv_filters,
+                    padding='valid'))(pre_rnn_1D)
+                  if use_batch_norm:
+                    pre_rnn_1D = TimeDistributed(BatchNormalization())(pre_rnn_1D)
+                  pre_rnn_1D = TimeDistributed(Activation('relu'))(pre_rnn_1D)
+                  pre_rnn_1D = TimeDistributed(Convolution1D(
+                    num_conv_filters//div_fac, 1, padding='valid'))(pre_rnn_1D)
+                  if use_batch_norm:
+                    pre_rnn_1D = TimeDistributed(BatchNormalization())(pre_rnn_1D)
+                  pre_rnn_1D = TimeDistributed(Activation('relu'))(pre_rnn_1D)
+                  pre_rnn_1D = TimeDistributed(MaxPooling1D(pool_size))(pre_rnn_1D)
+
+            if stf: 
+              pre_rnn_1D = Flatten()(pre_rnn_1D)
+              pre_rnn_1D = Dense(
+                dense_size,
+                kernel_regularizer=l2(dense_regularization),
+                bias_regularizer=l2(dense_regularization),
+                activity_regularizer=l2(dense_regularization))(pre_rnn_1D)
+              if use_batch_norm:
+                pre_rnn_1D = BatchNormalization()(pre_rnn_1D)
+              pre_rnn_1D = Activation('relu')(pre_rnn_1D)
+              pre_rnn_1D = Dense(
+                dense_size//4,
+                kernel_regularizer=l2(dense_regularization),
+                bias_regularizer=l2(dense_regularization),
+                activity_regularizer=l2(dense_regularization))(pre_rnn_1D)
+              if use_batch_norm:
+                pre_rnn_1D = BatchNormalization()(pre_rnn_1D)
+              pre_rnn_1D = Activation('relu')(pre_rnn_1D)
+              pre_rnn_1D = Reshape((1,-1))(pre_rnn_1D)
+            else:
+              pre_rnn_1D = TimeDistributed(Flatten())(pre_rnn_1D)
+              pre_rnn_1D = TimeDistributed(Dense(
+                dense_size,
+                kernel_regularizer=l2(dense_regularization),
+                bias_regularizer=l2(dense_regularization),
+                activity_regularizer=l2(dense_regularization)))(pre_rnn_1D)
+              if use_batch_norm:
+                pre_rnn_1D = TimeDistributed(BatchNormalization())(pre_rnn_1D)
+              pre_rnn_1D = TimeDistributed(Activation('relu'))(pre_rnn_1D)
+              pre_rnn_1D = TimeDistributed(Dense(
+                dense_size//4,
+                kernel_regularizer=l2(dense_regularization),
+                bias_regularizer=l2(dense_regularization),
+                activity_regularizer=l2(dense_regularization)))(pre_rnn_1D)
+              if use_batch_norm:
+                pre_rnn_1D = TimeDistributed(BatchNormalization())(pre_rnn_1D)
+              pre_rnn_1D = TimeDistributed(Activation('relu'))(pre_rnn_1D)
+            pre_rnn = Concatenate(axis=-1)([pre_rnn_0D, pre_rnn_1D])
+        else:
+            pre_rnn = pre_rnn_input
+
+        if model_conf['rnn_layers'] == 0 or (
+                'extra_dense_input' in model_conf.keys()
+                and model_conf['extra_dense_input']):
+          if stf:
+            pre_rnn = Dense(
+                dense_size,
+                activation='relu',
+                kernel_regularizer=l2(dense_regularization),
+                bias_regularizer=l2(dense_regularization),
+                activity_regularizer=l2(dense_regularization))(pre_rnn)
+            pre_rnn = Dense(
+                dense_size//2,
+                activation='relu',
+                kernel_regularizer=l2(dense_regularization),
+                bias_regularizer=l2(dense_regularization),
+                activity_regularizer=l2(dense_regularization))(pre_rnn)
+            pre_rnn = Dense(
+                dense_size//4,
+                activation='relu',
+                kernel_regularizer=l2(dense_regularization),
+                bias_regularizer=l2(dense_regularization),
+                activity_regularizer=l2(dense_regularization))(pre_rnn)
+          else:
+            pre_rnn = TimeDistributed(Dense(
+                dense_size,
+                activation='relu',
+                kernel_regularizer=l2(dense_regularization),
+                bias_regularizer=l2(dense_regularization),
+                activity_regularizer=l2(dense_regularization)))(pre_rnn)
+            pre_rnn = TimeDistributed(Dense(
+                dense_size//2,
+                activation='relu',
+                kernel_regularizer=l2(dense_regularization),
+                bias_regularizer=l2(dense_regularization),
+                activity_regularizer=l2(dense_regularization)))(pre_rnn)
+            pre_rnn = TimeDistributed(Dense(
+                dense_size//4,
+                activation='relu',
+                kernel_regularizer=l2(dense_regularization),
+                bias_regularizer=l2(dense_regularization),
+                activity_regularizer=l2(dense_regularization)))(pre_rnn)
+
+        x_in=pre_rnn
 
 ###################TCN model##################################
         if 'keras_tcn' in model_conf.keys() and model_conf['keras_tcn']==True:
@@ -299,7 +563,7 @@ class ModelBuilder(object):
                dropout_rate=tcn_dropout)(x_in)
             x_in = Dropout(dropout_prob) (x_in)
         else: 
-###################TCN model##################################
+##################END #TCN model##################################
           for _ in range(model_conf['rnn_layers']):
             x_in = rnn_model(
                 rnn_size, return_sequences=return_sequences,
@@ -308,17 +572,23 @@ class ModelBuilder(object):
                 recurrent_regularizer=l2(regularization),
                 bias_regularizer=l2(regularization), dropout=dropout_prob,
                 recurrent_dropout=dropout_prob)(x_in)
+            
+            if not return_sequences: 
+              x_in=Reshape((1,-1))(x_in)
+              print('printing_out x_in shape in build,',x_in.shape)            
+
             x_in = Dropout(dropout_prob)(x_in)
-        if return_sequences:
-            # x_out = TimeDistributed(Dense(100,activation='tanh')) (x_in)
-            x_out = TimeDistributed(
-                Dense(1, activation=output_activation))(x_in)
-        else:
+
+        if stf:
             x_out = Dense(1, activation=output_activation)(x_in)
-        model = Model(inputs=x_input, outputs=x_out)
-        # bug with tensorflow/Keras
-        # TODO(KGF): what is this bug? this is the only direct "tensorflow"
-        # import outside of mpi_runner.py and runner.py
+        else:
+            if return_sequences ==False:
+                x_out = Dense(1, activation=output_activation)(x_in)
+            else:
+                x_out = TimeDistributed(
+                  Dense(1, activation=output_activation))(x_in)
+        model = Model(inputs=pre_rnn_input_0, outputs=x_out)
+        
         if (conf['model']['backend'] == 'tf'
                 or conf['model']['backend'] == 'tensorflow'):
             first_time = "tensorflow" not in sys.modules
@@ -457,10 +727,12 @@ class ModelBuilder(object):
                     dropout=dropout_prob,
                     recurrent_dropout=dropout_prob))
             model.add(Dropout(space['Dropout']))
-        if return_sequences:
-            model.add(TimeDistributed(Dense(1, activation=output_activation)))
-        else:
+        if 'real_time_prediction' in model_conf.keys() and model_conf['real_time_prediction']==True:
             model.add(Dense(1, activation=output_activation))
+        elif return_sequences ==False:
+            model.add(Dense(1, activation=output_activation))
+        else:
+            model.add(TimeDistributed(Dense(1, activation=output_activation)))
         model.reset_states()
 
         return model

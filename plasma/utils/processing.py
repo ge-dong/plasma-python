@@ -54,6 +54,7 @@ def cut_signal(t, sig, tmin, tmax):
 
 def cut_and_resample_signal(t, sig, tmin, tmax, dt, precision_str):
     t, sig = cut_signal(t, sig, tmin, tmax)
+    print(tmin,tmax)
     return resample_signal(t, sig, tmin, tmax, dt, precision_str)
 
 

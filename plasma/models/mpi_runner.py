@@ -695,10 +695,13 @@ def mpi_make_predictions(conf, shot_list, loader, custom_path=None):
     y_prime = []
     y_gold = []
     disruptive = []
-
-    model = specific_builder.build_model(True)
+    if 'PCS' in conf['model'].keys() and conf['model']['PCS']==True:
+        model = specific_builder.build_model_PCS(True)
+    else:
+        model = specific_builder.build_model(True)
     specific_builder.load_model_weights(model, custom_path)
-
+    if 'real_time_prediction' in conf['model'].keys() and conf['model']['real_time_prediction']==True:
+       model.summary()
     # broadcast model weights then set it explicitely: fix for Py3.6
     if sys.version_info[0] > 2:
         if g.task_index == 0:
@@ -726,6 +729,8 @@ def mpi_make_predictions(conf, shot_list, loader, custom_path=None):
     for (i, shot_sublist) in enumerate(shot_sublists):
         if i % g.num_workers == g.task_index:
             X, y, shot_lengths, disr = loader.load_as_X_y_pred(shot_sublist)
+           # print('Prediction shape, X:', X.shape)
+           # print('Prediction shape, y:', y.shape)
 
             # load data and fit on data
             y_p = model.predict(X, batch_size=conf['model']['pred_batch_size'])
@@ -830,7 +835,10 @@ def mpi_train(conf, shot_list_train, shot_list_validate, loader,
     # WARNING:tensorflow:From  .../keras/backend/tensorflow_backend.py:174:
     # The name tf.get_default_session is deprecated.
     # Please use tf.compat.v1.get_default_session instead.
-    train_model = specific_builder.build_model(False)
+    if 'PCS' in conf['model'].keys() and conf['model']['PCS']==True:
+        train_model = specific_builder.build_model_PCS(False)
+    else:
+        train_model = specific_builder.build_model(False)
     # Cannot fix these Keras internals via "import tensorflow.compat.v1 as tf"
     #
     # TODO(KGF): note, these are different than C-based info diagnostics e.g.:

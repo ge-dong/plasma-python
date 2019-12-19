@@ -10,7 +10,7 @@ paths:
     signal_prepath: '/signal_data/' # /signal_data/jet/
     shot_list_dir: '/shot_lists/'
     tensorboard_save_path: '/Graph/'
-    data: d3d_data ##_0D # 'd3d_to_jet_data' # 'd3d_to_jet_data' #  'jet_to_d3d_data' # jet_data
+    data: d3d_data_0D ##_0D # 'd3d_to_jet_data' # 'd3d_to_jet_data' #  'jet_to_d3d_data' # jet_data
     # if specific_signals: [] left empty, it will use all valid signals defined on a machine. Only use if need a custom set
     specific_signals: [] # ['q95','li','ip','betan','energy','lm','pradcore','pradedge','pradtot','pin','torquein','tmamp1','tmamp2','tmfreq1','tmfreq2','pechin','energydt','ipdirect','etemp_profile','edens_profile']
     executable: "mpi_learn.py"
@@ -103,18 +103,19 @@ model:
     lr: 0.00002 # 0.00001 # 0.0005 # for adam plots 0.0000001 # 0.00005 # 0.00005 # 0.00005
     lr_decay: 0.97 # 0.98 # 0.9
     stateful: True
-    return_sequences: True # True
+    return_sequences: True #  False #True #False # True
     dropout_prob: 0.1
     # only relevant if we want to do MPI training. The number of steps with a single replica
     warmup_steps: 0
     ignore_timesteps: 100 # how many initial timesteps to ignore during evaluation (to let the internal state settle)
     backend: 'tensorflow'
 training:
+    batch_size: 128
     as_array_of_shots: True
     shuffle_training: True
     train_frac: 0.75
     validation_frac: 0.33
-    batch_size: 128 # 256
+    eatch_size: 128 # 256
     # THE MAX_PATCH_LENGTH WAS THE CULPRIT FOR NO TRAINING! Lower than 1000 performs very poorly
     max_patch_length: 100000
     # How many shots are we loading at once?
@@ -122,7 +123,7 @@ training:
     num_epochs: 1000   # large number = maximum number of epochs. Early stopping will occur if loss does not decrease
     use_mock_data: False
     data_parallel: False
-    hyperparam_tuning: False
+    hyperparam_tuning: True
     batch_generator_warmup_steps: 0
     use_process_generator: False
     num_batches_minimum: 20 # minimum number of batches per epoch

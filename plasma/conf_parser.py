@@ -38,8 +38,14 @@ def parameters(input_file):
         params['paths']['output_path'] = output_path
         if params['paths']['data']=='d3d_data_gar18':
            h = myhash_signals(sig.all_signals_gar18.values())
+        if params['paths']['data']=='d3d_data_n1rms':
+           h = myhash_signals(sig.all_signals_n1rms.values())
         elif params['paths']['data']=='d3d_data_garbage':
            h = myhash_signals(sig.all_signals_gar18.values())*2
+        elif params['paths']['data']=='d3d_data_real_time':
+           h = myhash_signals(sig.all_signals_real_time.values())
+        elif params['paths']['data']=='d3d_data_real_time_0D':
+           h = myhash_signals(sig.all_signals_real_time_0D.values())
         else:   
            h = myhash_signals(sig.all_signals.values())
         params['paths']['global_normalizer_path'] = (
@@ -96,6 +102,13 @@ def parameters(input_file):
         # signals
         if params['paths']['data'] in ['d3d_data_gar18','d3d_data_garbage']:
            params['paths']['all_signals_dict'] = sig.all_signals_gar18
+        elif params['paths']['data']=='d3d_data_n1rms':
+           params['paths']['all_signals_dict'] = sig.all_signals_n1rms
+        elif params['paths']['data']=='d3d_data_real_time':
+           params['paths']['all_signals_dict'] = sig.all_signals_real_time
+        elif params['paths']['data']=='d3d_data_real_time_0D':
+           params['paths']['all_signals_dict'] = sig.all_signals_real_time_0D
+           
         else:
            params['paths']['all_signals_dict'] = sig.all_signals
            
@@ -259,6 +272,28 @@ def parameters(input_file):
                 'etemp_profilet': sig.etemp_profilet,
                 'edens_profilet': sig.edens_profilet,
             }
+        elif params['paths']['data'] in ['d3d_data_n1rms']:
+            params['paths']['shot_files'] = [d3d_full_new]
+            params['paths']['shot_files_test'] = []
+            params['paths']['use_signals_dict'] = {
+                'q95t': sig.q95,
+                'lit': sig.li,
+                'ipt': sig.ip,
+                'lmt': sig.lm,
+                'betant': sig.betan,
+                'energyt': sig.energy,
+                'denst': sig.dens,
+                'pradcoret': sig.pradcore,
+                'pradedget': sig.pradedge,
+                'pint': sig.pin,
+                'torqueint': sig.torquein,
+                'ipdirectt': sig.ipdirect,
+                'iptargett': sig.iptarget,
+                'iperrt': sig.iperr,
+                'etemp_profilet': sig.etemp_profile,
+                'edens_profilet': sig.edens_profile,
+                'n1_rms': sig.n1_rms,
+            }
 
         elif params['paths']['data'] == 'd3d_data_new':
             params['paths']['shot_files'] = [d3d_full_new]
@@ -281,6 +316,49 @@ def parameters(input_file):
                 'etemp_profile': sig.etemp_profile,
                 'edens_profile': sig.edens_profile,
             }
+        elif params['paths']['data'] == 'd3d_data_real_time':
+            params['paths']['shot_files'] = [d3d_full_new]
+            params['paths']['shot_files_test'] = []
+            params['paths']['use_signals_dict'] = {
+                'q95_EFITRT1': sig.q95_EFITRT1,
+                'li': sig.li,
+                'ip': sig.ip,
+                'lm': sig.lm,
+                'betan': sig.betan,
+                'energy': sig.energy,
+                'dens': sig.dens,
+                'pradcore': sig.pradcore,
+                'pradedge': sig.pradedge,
+                'pin': sig.pin,
+                'torquein': sig.torquein,
+                'ipdirect': sig.ipdirect,
+                'iptarget': sig.iptarget,
+                'iperr': sig.iperr,
+                'etemp_profile': sig.etemp_profile,
+                'edens_profile': sig.edens_profile,
+            }
+        elif params['paths']['data'] == 'd3d_data_real_time_0D':
+            params['paths']['shot_files'] = [d3d_full_new]
+            params['paths']['shot_files_test'] = []
+            params['paths']['use_signals_dict'] = {
+                'q95_EFITRT1': sig.q95_EFITRT1,
+                'li': sig.li,
+                'ip': sig.ip,
+                'lm': sig.lm,
+                'betan': sig.betan,
+                'energy': sig.energy,
+                'dens': sig.dens,
+                'pradcore': sig.pradcore,
+                'pradedge': sig.pradedge,
+                'pin': sig.pin,
+                'vd': sig.vd,
+                'torquein': sig.torquein,
+                'ipdirect': sig.ipdirect,
+                'iptarget': sig.iptarget,
+            }
+
+
+
         elif params['paths']['data'] == 'd3d_data_1D':
             params['paths']['shot_files'] = [d3d_full]
             params['paths']['shot_files_test'] = []
