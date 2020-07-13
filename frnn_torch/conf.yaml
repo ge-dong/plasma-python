@@ -1,0 +1,114 @@
+callbacks:
+  list:
+  - earlystop
+  metrics:
+  - val_loss
+  - val_roc
+  - train_loss
+  mode: max
+  monitor: val_roc
+  patience: 100
+  write_grads: false
+data:
+  T_max: 1000.0
+  T_min_warn: 30
+  T_warning: 10.024
+  augment_during_training: false
+  augmentation_mode: none
+  bleed_in: 0
+  bleed_in_remove_from_test: true
+  current_end_thresh: 10000
+  current_index: 0
+  current_thresh: 750000
+  cut_shot_ends: false
+  dt: 0.001
+  equalize_classes: false
+  floatx: float32
+  normalizer: var
+  plotting: false
+  positive_example_penalty: 16.0
+  recompute: false
+  recompute_normalization: false
+  signal_to_augment: None
+  use_shots: 200000
+  window_decay: 2
+  window_size: 10
+fs_path: /tigress
+model:
+  model_type: TTLSTM
+  tcn_hidden: 20
+  tcn_layers: 8
+  kernel_size_temporal: 11
+  tt_lstm_hidden: 10
+  cell_order: 1
+  cell_steps: 1
+  cell_rank: 1
+  torch: True
+  PCS: True
+  loss_scale_factor: 1
+  simple_conv: True
+  backend: tensorflow
+  clipnorm: 10.0
+  dense_regularization: 0.01
+  dense_size: 200
+  dropout_prob: 0.1
+  ignore_timesteps: 100
+  length: 300
+  lr: 3.1734324004716406e-05
+  lr_decay: 0.97
+  lr_decay_factor: 3
+  lr_decay_patience: 8
+  num_conv_filters: 5
+  num_conv_layers: 2
+  optimizer: adam
+  pool_size: 2
+  pred_batch_size:  128 #256
+  pred_length: 300
+  regularization: 0.0
+  return_sequences: true
+  rnn_layers: 2
+  rnn_size: 200
+  rnn_type: LSTM
+  shallow: false
+  shallow_model:
+    C: 1.0
+    kernel: rbf
+    learning_rate: 0.1
+    max_depth: 3
+    n_estimators: 100
+    num_samples: 1000000
+    scale_pos_weight: 10.0
+    skip_train: false
+    type: xgboost
+  size_conv_filters: 3
+  skip: 1
+  stateful: true
+  warmup_steps: 0
+num_gpus: 4
+paths:
+  data: d3d_data_0D #_ori
+  executable: torch_learn.py
+  shallow_executable: learn.py
+  shot_list_dir: /shot_lists/
+  signal_prepath: /signal_data/
+  specific_signals: []
+  tensorboard_save_path: /Graph/
+target: ttd
+training:
+  as_array_of_shots: true
+  batch_generator_warmup_steps: 0
+  batch_size:  32 #128 #256
+  data_parallel: false
+  hyperparam_tuning: true
+  max_patch_length: 100000
+  num_batches_minimum: 200
+  num_epochs: 200
+  num_shots_at_once: 200
+  ranking_difficulty_fac: 1.0
+  shuffle_training: true
+  train_frac: 0.75
+  use_mock_data: false
+  validation_frac: 0.33
+env:
+  name: torch-env
+  type: anaconda3
